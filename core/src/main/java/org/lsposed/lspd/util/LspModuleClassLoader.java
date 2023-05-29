@@ -3,6 +3,7 @@ package org.lsposed.lspd.util;
 import static de.robv.android.xposed.XposedBridge.TAG;
 
 import android.os.Build;
+import android.os.Process;
 import android.os.SharedMemory;
 import android.system.ErrnoException;
 import android.system.Os;
@@ -63,8 +64,23 @@ public final class LspModuleClassLoader extends ByteBufferDexClassLoader {
     }
 
     private void initNativeLibraryDirs(String librarySearchPath) {
-        nativeLibraryDirs.addAll(splitPaths(librarySearchPath));
+        Log.e(TAG, "LspModuleClassLoader: initNativeLibraryDirs: "+ librarySearchPath);
+        var list = splitPaths(librarySearchPath);
+        for (File path : list) {
+            if (path.getPath().contains(zipSeparator)) {
+                nativeLibraryDirs.add(path);
+                String[] splits = path.getPath().split(zipSeparator);
+                if (splits.length >= 1) {
+                    String apkDirPath = new File(splits[0]).getParent();
+                    String libDirPath = apkDirPath + "/lib/" + (Process.is64Bit() ? "arm64" : "arm");
+                    nativeLibraryDirs.add(new File(libDirPath));
+                }
+            } else {
+                nativeLibraryDirs.add(path);
+            }
+        }
         nativeLibraryDirs.addAll(systemNativeLibraryDirs);
+        Log.e(TAG, "LspModuleClassLoader: native lib dir: "+Arrays.toString(nativeLibraryDirs.toArray()));
     }
 
     @Override
